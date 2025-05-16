@@ -93,10 +93,14 @@ jobs:
 
       - name: Upload to Infracost Cloud Dashboard
         run: |
-          infracost upload --path infracost-base.json \
-            --repo $GITHUB_REPOSITORY \
-            --commit $GITHUB_SHA \
-            --branch $GITHUB_REF_NAME
+          export INFRACOST_VCS_PROVIDER="github"
+          export INFRACOST_VCS_REPOSITORY_URL="https://github.com/$GITHUB_REPOSITORY"
+          export INFRACOST_VCS_COMMIT_SHA="$GITHUB_SHA"
+          export INFRACOST_VCS_BRANCH="$GITHUB_REF_NAME"
+          export INFRACOST_VCS_PULL_REQUEST_TITLE="Infracost estimate"
+
+          # Subir el reporte a Infracost Cloud
+          infracost upload --path infracost-base.json
 
       - name: Terraform Plan
         id: plan
