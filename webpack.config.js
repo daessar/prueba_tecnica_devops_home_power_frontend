@@ -2,6 +2,9 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const webpack = require('webpack');
 
+// Establecer un valor predeterminado para API_URL si no está definido
+const apiUrl = process.env.API_URL || 'https://vt2uwg4jm1.execute-api.us-east-1.amazonaws.com/Prod';
+
 module.exports = {
   entry: './src/index.js',
   output: {
@@ -34,7 +37,7 @@ module.exports = {
       template: './public/index.html',
     }),
     new webpack.DefinePlugin({
-      'process.env.API_URL': JSON.stringify(process.env.API_URL),
+      'process.env.API_URL': JSON.stringify(apiUrl),
     }),
   ],
   devServer: {

@@ -6,17 +6,32 @@ const App = () => {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [apiInfo, setApiInfo] = useState(null);
 
   useEffect(() => {
     const fetchClients = async () => {
       try {
+        // Mostrar información de API_URL para depuración
+        const apiUrl = process.env.API_URL;
+        setApiInfo(`Conectando a API: ${apiUrl || 'API_URL no definida'}`);
+        console.log('API URL:', apiUrl);
+
         setLoading(true);
         const data = await getClients();
+
+        if (!data || !Array.isArray(data)) {
+          console.error('La respuesta de la API no es un array:', data);
+          setError('Error: La respuesta del servidor no tiene el formato esperado.');
+          setClients([]);
+          return;
+        }
+
         setClients(data);
         setError(null);
       } catch (err) {
-        setError('Error al cargar los clientes. Por favor, inténtelo de nuevo más tarde.');
-        console.error(err);
+        setError(`Error al cargar los clientes: ${err.message || 'Error desconocido'}`);
+        console.error('Detalles del error:', err);
+        setClients([]);
       } finally {
         setLoading(false);
       }
@@ -30,10 +45,11 @@ const App = () => {
       <header className="app-header text-center">
         <h1>Home Power - Listado de Clientes</h1>
         <p>Api Gateway + Lambda + Nest.js</p>
+        {apiInfo && <small className="text-muted">{apiInfo}</small>}
       </header>
 
       {error && (
-        <div className="error text-center p-3">
+        <div className="alert alert-danger text-center p-3">
           <p>{error}</p>
           <button
             className="btn btn-primary"
@@ -45,10 +61,11 @@ const App = () => {
       )}
 
       {loading ? (
-        <div className="loading">
+        <div className="loading text-center p-5">
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Cargando...</span>
           </div>
+          <p className="mt-2">Conectando al servidor...</p>
         </div>
       ) : (
         <>

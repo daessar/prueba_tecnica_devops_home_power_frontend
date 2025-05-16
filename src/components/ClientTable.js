@@ -1,6 +1,9 @@
 import React from 'react';
 
 const ClientTable = ({ clients }) => {
+  // Verificar si clients es un array para evitar errores
+  const clientsArray = Array.isArray(clients) ? clients : [];
+
   return (
     <div className="client-table p-4">
       <table className="table table-striped">
@@ -13,7 +16,7 @@ const ClientTable = ({ clients }) => {
           </tr>
         </thead>
         <tbody>
-          {clients.map(client => (
+          {clientsArray.map(client => (
             <tr key={client.id}>
               <td>{client.id}</td>
               <td>{client.name}</td>
