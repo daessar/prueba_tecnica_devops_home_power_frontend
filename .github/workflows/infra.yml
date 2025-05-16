@@ -82,7 +82,7 @@ jobs:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
 
       - name: Generate Infracost baseline
-        run: infracost breakdown --path . --format json --out-file infracost-base.json
+        run: infracost breakdown --path ./infra --format json --out-file infracost-base.json
 
       - name: Terraform Plan
         id: plan
