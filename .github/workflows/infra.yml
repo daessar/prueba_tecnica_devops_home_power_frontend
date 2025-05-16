@@ -3,12 +3,12 @@ name: 'Infraestructura CI/CD'
 on:
   push:
     branches: [ feature/*, master ]
-    # paths:
-    #   - 'infra/**'
+    paths:
+      - 'infra/**'
   pull_request:
     branches: [ master ]
-    # paths:
-    #   - 'infra/**'
+    paths:
+      - 'infra/**'
   workflow_dispatch:
 
 permissions:
@@ -93,15 +93,10 @@ jobs:
 
       - name: Upload to Infracost Cloud Dashboard
         run: |
-          # Configurar variables de entorno requeridas por Infracost
-          export INFRACOST_VCS_PROVIDER="github"
-          export INFRACOST_VCS_REPOSITORY_URL="https://github.com/$GITHUB_REPOSITORY"
-          export INFRACOST_VCS_COMMIT_SHA="$GITHUB_SHA"
-          export INFRACOST_VCS_BRANCH="$GITHUB_REF_NAME"
-          export INFRACOST_VCS_PULL_REQUEST_TITLE="Infracost estimate"
-
-          # Subir el reporte a Infracost Cloud
-          infracost upload --path infracost-base.json
+          infracost upload --path infracost-base.json \
+            --repo $GITHUB_REPOSITORY \
+            --commit $GITHUB_SHA \
+            --branch $GITHUB_REF_NAME
 
       - name: Terraform Plan
         id: plan
@@ -111,7 +106,7 @@ jobs:
   terraform-cd:
     name: 'Terraform CD'
     needs: terraform-ci
-    # if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     environment: production
     defaults:
