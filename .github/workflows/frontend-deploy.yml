@@ -3,11 +3,11 @@ name: 'Frontend Deployment'
 on:
   push:
     branches: [ feature/*, master ]
-    # paths:
-    #   - 'src/**'
-    #   - 'public/**'
-    #   - 'package.json'
-    #   - 'webpack.config.js'
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'webpack.config.js'
   pull_request:
     branches: ['master']
   workflow_dispatch:
@@ -53,7 +53,7 @@ jobs:
     defaults:
       run:
         working-directory: .
-    # if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master'
 
     steps:
       - name: Checkout
