@@ -1,143 +1,139 @@
-# name: 'Infraestructura CI/CD'
+name: 'Infraestructura CI/CD'
 
-# on:
-#   push:
-#     branches: [ feature/*, master ]
-#     paths:
-#       - 'infra/**'
-#   pull_request:
-#     branches: [ master ]
-#     paths:
-#       - 'infra/**'
-#   workflow_dispatch:
+on:
+  push:
+    branches: [ feature/*, master ]
+    paths:
+      - 'infra/**'
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'infra/**'
+  workflow_dispatch:
 
-# permissions:
-#   contents: read
-#   pull-requests: write
+permissions:
+  contents: read
+  pull-requests: write
 
-# jobs:
-#   pre-commit:
-#     name: 'Pre-commit Terraform Checks'
-#     runs-on: ubuntu-latest
-#     container:
-#       image: ghcr.io/antonbabenko/pre-commit-terraform:latest
-#     defaults:
-#       run:
-#         working-directory: ./infra
-#         shell: bash
+jobs:
+  pre-commit:
+    name: 'Pre-commit Terraform Checks'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/antonbabenko/pre-commit-terraform:latest
+    defaults:
+      run:
+        working-directory: ./infra
+        shell: bash
 
-#     steps:
-#       - name: Checkout
-#         uses: actions/checkout@v3
-#         with:
-#           fetch-depth: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-#       - name: Configure Git
-#         run: |
-#           git config --global --add safe.directory $GITHUB_WORKSPACE
-#           git fetch --no-tags --prune --depth=1 origin +refs/heads/*:refs/remotes/origin/*
+      - name: Configure Git
+        run: |
+          git config --global --add safe.directory $GITHUB_WORKSPACE
+          git fetch --no-tags --prune --depth=1 origin +refs/heads/*:refs/remotes/origin/*
 
-#       - name: Setup pre-commit cache
-#         uses: actions/cache@v3
-#         with:
-#           path: ~/.cache/pre-commit
-#           key: pre-commit-3|${{ hashFiles('./infra/.pre-commit-config.yaml') }}
-
-#       - name: Create pre-commit config file if not exists
-#         run: |
-#           if [ ! -f ".pre-commit-config.yaml" ]; then
-#             cat > .pre-commit-config.yaml << 'EOF'
-#             repos:
-#             - repo: https://github.com/antonbabenko/pre-commit-terraform
-#               rev: v1.83.5
-#               hooks:
-#                 - id: terraform_fmt
-#                 - id: terraform_validate
-#                 - id: terraform_docs
-#                 - id: terraform_providers_lock
-#                   args:
-#                     - --args=-platform=darwin_arm64
-#                     - --args=-platform=darwin_amd64
-#                     - --args=-platform=linux_amd64
-#             - repo: https://github.com/pre-commit/pre-commit-hooks
-#               rev: v4.4.0
-#               hooks:
-#                 - id: check-merge-conflict
-#                 - id: end-of-file-fixer
-#                 - id: trailing-whitespace
-#                 - id: check-yaml
-#             EOF
-#           fi
-
-#       - name: Run pre-commit
-#         run: |
-#           pre-commit run --all-files --color=always --show-diff-on-failure
+      - name: Run pre-commit
+        run: |
+          pre-commit run --all-files --color=always --show-diff-on-failure
 
 
-#   terraform-ci:
-#     name: 'Terraform CI'
-#     needs: [pre-commit]
-#     runs-on: ubuntu-latest
-#     defaults:
-#       run:
-#         working-directory: ./infra
+  terraform-ci:
+    name: 'Terraform CI'
+    needs: [pre-commit]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./infra
 
-#     steps:
-#       - name: Checkout
-#         uses: actions/checkout@v3
-#         with:
-#           fetch-depth: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-#       - name: Setup Terraform
-#         uses: hashicorp/setup-terraform@v2
-#         with:
-#           terraform_version: "1.5.0"
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-#       - name: Terraform Init
-#         id: init
-#         run: terraform init
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3.1.2
+        with:
+          terraform_version: "1.12.0"
 
-#       - name: Terraform Validate
-#         id: validate
-#         run: terraform validate
+      - name: Terraform Init
+        id: init
+        run: terraform init
 
-#       - name: Setup Infracost
-#         uses: infracost/actions/setup@v2
-#         with:
-#           api-key: ${{ secrets.INFRACOST_API_KEY }}
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate
 
-#       - name: Generate Infracost baseline
-#         run: infracost breakdown --path . --format json --out-file infracost-base.json
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
 
-#       - name: Terraform Plan
-#         id: plan
-#         run: terraform plan -out=tfplan
-#         continue-on-error: true
+      - name: Generate Infracost baseline
+        run: infracost breakdown --path . --format json --out-file infracost-base.json
 
-#   terraform-cd:
-#     name: 'Terraform CD'
-#     needs: terraform-ci
-#     if: github.ref == 'refs/heads/master'
-#     runs-on: ubuntu-latest
-#     environment: production
-#     defaults:
-#       run:
-#         working-directory: ./infra
+      - name: Upload Infracost report
+        uses: actions/upload-artifact@v4
+        with:
+          name: infracost-report
+          path: ./infra/infracost-base.json
+          retention-days: 90
 
-#     steps:
-#       - name: Checkout
-#         uses: actions/checkout@v3
+      - name: Upload to Infracost Cloud Dashboard
+        run: |
+          infracost upload --path infracost-base.json \
+            --repo $GITHUB_REPOSITORY \
+            --commit $GITHUB_SHA \
+            --branch $GITHUB_REF_NAME
 
-#       - name: Setup Terraform
-#         uses: hashicorp/setup-terraform@v2
-#         with:
-#           terraform_version: "1.5.0"
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -out=tfplan
+        continue-on-error: true
 
-#       - name: Terraform Init
-#         run: terraform init
+  terraform-cd:
+    name: 'Terraform CD'
+    needs: terraform-ci
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: ./infra
 
-#       - name: Terraform Plan
-#         run: terraform plan -out=tfplan
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
 
-#       - name: Terraform Apply
-#         run: terraform apply -auto-approve tfplan
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3.1.2
+        with:
+          terraform_version: "1.12.0"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
