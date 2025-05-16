@@ -82,7 +82,21 @@ jobs:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
 
       - name: Generate Infracost baseline
-        run: infracost breakdown --path ./infra --format json --out-file infracost-base.json
+        run: infracost breakdown --path . --format json --out-file infracost-base.json
+
+      - name: Upload Infracost report
+        uses: actions/upload-artifact@v4
+        with:
+          name: infracost-report
+          path: ./infra/infracost-base.json
+          retention-days: 90
+
+      - name: Upload to Infracost Cloud Dashboard
+        run: |
+          infracost upload --path infracost-base.json \
+            --repo $GITHUB_REPOSITORY \
+            --commit $GITHUB_SHA \
+            --branch $GITHUB_REF_NAME
 
       - name: Terraform Plan
         id: plan
