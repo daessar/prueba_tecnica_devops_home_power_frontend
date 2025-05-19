@@ -76,32 +76,6 @@ jobs:
         id: validate
         run: terraform validate
 
-      - name: Setup Infracost
-        uses: infracost/actions/setup@v3
-        with:
-          api-key: ${{ secrets.INFRACOST_API_KEY }}
-
-      - name: Generate Infracost baseline
-        run: infracost breakdown --path . --format json --out-file infracost-base.json
-
-      - name: Upload Infracost report
-        uses: actions/upload-artifact@v4
-        with:
-          name: infracost-report
-          path: ./infra/infracost-base.json
-          retention-days: 90
-
-      - name: Upload to Infracost Cloud Dashboard
-        run: |
-          export INFRACOST_VCS_PROVIDER="github"
-          export INFRACOST_VCS_REPOSITORY_URL="https://github.com/$GITHUB_REPOSITORY"
-          export INFRACOST_VCS_COMMIT_SHA="$GITHUB_SHA"
-          export INFRACOST_VCS_BRANCH="$GITHUB_REF_NAME"
-          export INFRACOST_VCS_PULL_REQUEST_TITLE="Infracost estimate"
-
-          # Subir el reporte a Infracost Cloud
-          infracost upload --path infracost-base.json
-
       - name: Terraform Plan
         id: plan
         run: terraform plan -out=tfplan
