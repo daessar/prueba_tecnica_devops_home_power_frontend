@@ -22,7 +22,6 @@ Esta configuración de Terraform despliega la aplicación frontend como un sitio
 * `variables.tf`: Variables configurables
 * `main.tf`: Recursos principales (S3, CloudFront)
 * `outputs.tf`: Valores de salida importantes
-* `upload.tf`: Lógica para subir archivos e invalidar caché
 
 ## Uso
 
